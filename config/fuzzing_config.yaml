@@ -1,0 +1,29 @@
+# config/fuzzing_config.yaml
+
+target:
+  ip: "10.113.105.46"
+  port: 5060
+
+authentication:
+  csv_file: "/workspace/auth_data.csv"
+  imsi: "001010123456789"
+  k: "465B5CE8B199B49FAA5F0A2EE238A6BC"
+  opc: "E8ED289DEBA952E4283B54E88E6183CA"
+  amf: "8000"
+
+fuzzing:
+  template: "/workspace/templates/base_register.xml"
+  iterations: 100
+  timeout: 30  # seconds
+  delay_between_tests: 2  # seconds
+
+android:
+  enabled: true
+  device_id: null  # null = 첫 번째 디바이스
+
+output:
+  base_dir: "/workspace/output"
+  scenarios_dir: "/workspace/output/scenarios"
+  logs_dir: "/workspace/output/logs"
+  logcat_dir: "/workspace/output/logcat"
+  crashes_dir: "/workspace/output/crashes"
