@@ -27,6 +27,85 @@ class FuzzingOrchestrator:
         
         self.results = []
         self.crashes = []
+    
+    def run_baseline_test(self) -> Dict:
+        """기본 REGISTER 시나리오 실행 (변조 없음)"""
+        print('[*] Running baseline REGISTER test (no fuzzing)')
+        
+        template_path = self.config['fuzzing']['template']
+        print(f'[*] Using template: {template_path}')
+        
+        # ADB 모니터링 시작 (옵션)
+        if self.config.get('android', {}).get('enabled', False):
+            print('[*] Starting ADB monitoring...')
+            
+            logcat_file = os.path.join(
+                self.config['output']['logcat_dir'],
+                f'logcat_baseline_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+            )
+            
+            self.adb_monitor.register_callback(self._on_crash_detected)
+            self.adb_monitor.start_monitoring(logcat_file)
+            time.sleep(2)
+        
+        # 기본 시나리오 실행
+        print('[*] Executing baseline scenario...')
+        result = self.sipp_runner.run_scenario(
+            scenario_file=template_path,
+            auth_file=self.config['authentication']['csv_file'],
+            timeout=self.config['fuzzing']['timeout']
+        )
+        
+        # 결과 출력
+        print('\n' + '='*60)
+        print('BASELINE TEST RESULT')
+        print('='*60)
+        print(f'Success: {result["success"]}')
+        print(f'Exit Code: {result["exit_code"]}')
+        print(f'Duration: {result["duration"]:.2f}s')
+        print(f'Timeout: {result["timeout"]}')
+        
+        if result['stdout']:
+            print('\n--- STDOUT ---')
+            print(result['stdout'][:1000])
+        
+        if result['stderr']:
+            print('\n--- STDERR ---')
+            print(result['stderr'][:1000])
+        
+        print('='*60)
+        
+        # ADB 모니터링 중지
+        if self.config.get('android', {}).get('enabled', False):
+            time.sleep(2)  # 로그 수집 대기
+            print('\n[*] Stopping ADB monitoring...')
+            self.adb_monitor.stop_monitoring()
+            
+            if self.crashes:
+                print(f'[!] Crashes detected during baseline test: {len(self.crashes)}')
+                for crash in self.crashes:
+                    print(f'    - {crash["pattern_name"]}: {crash["log_line"][:80]}...')
+        
+        # 결과 저장
+        baseline_result = {
+            'test_type': 'baseline',
+            'timestamp': datetime.now().isoformat(),
+            'scenario': template_path,
+            'result': result,
+            'crashes': self.crashes
+        }
+        
+        output_file = os.path.join(
+            self.config['output']['base_dir'],
+            f'baseline_result_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+        )
+        
+        with open(output_file, 'w') as f:
+            json.dump(baseline_result, f, indent=2, default=str)
+        
+        print(f'\n[*] Baseline result saved to: {output_file}')
+        
+        return baseline_result
         
     def run_fuzzing_campaign(self) -> None:
         """퍼징 캠페인 실행"""
