@@ -174,7 +174,7 @@ class FuzzingOrchestrator:
             
             # 크래시 여부 확인
             if result['exit_code'] != 0 or result['timeout']:
-                print(f'  [!] Potential issue detected (exit_code: {result['exit_code']})')
+                print(f"[!] Potential issue detected (exit_code: {result['exit_code']})")
                 self._save_crash_case(scenario, test_result)
             
             # 안정화 대기

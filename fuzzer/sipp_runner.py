@@ -1,4 +1,7 @@
+# fuzzer/sipp_runner.py
+
 import subprocess
+import threading
 import time
 from typing import Optional, Dict, List
 import signal
@@ -33,9 +36,10 @@ class SIPpRunner:
                 'timeout': bool
             }
         """
+        # Ubuntu 호스트에서 직접 sipp 실행
         cmd = [
-            'docker', 'exec', '-i', 'sipp-test',
-            'sipp', f'{self.target_ip}:{self.target_port}',
+            'sipp', 
+            f'{self.target_ip}:{self.target_port}',
             '-sf', scenario_file,
             '-m', '1',  # 1번만 실행
             '-l', '1',  # 동시 호 1개
@@ -45,12 +49,15 @@ class SIPpRunner:
             cmd.extend(['-inf', auth_file])
         
         if trace:
+            timestamp = int(time.time())
             cmd.extend([
                 '-trace_msg',
                 '-trace_err',
-                '-message_file', f'/workspace/output/logs/sipp_{int(time.time())}_msg.log',
-                '-error_file', f'/workspace/output/logs/sipp_{int(time.time())}_err.log'
+                '-message_file', f'output/logs/sipp_{timestamp}_msg.log',
+                '-error_file', f'output/logs/sipp_{timestamp}_err.log'
             ])
+        
+        print(f'[DEBUG] Executing command: {" ".join(cmd)}')
         
         start_time = time.time()
         
@@ -79,11 +86,14 @@ class SIPpRunner:
             
         except subprocess.TimeoutExpired:
             # 타임아웃 시 프로세스 강제 종료
-            os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
-            time.sleep(1)
-            
-            if self.process.poll() is None:
-                os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
+            try:
+                os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+                time.sleep(1)
+                
+                if self.process.poll() is None:
+                    os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
+            except Exception as e:
+                print(f'[ERROR] Failed to kill process: {e}')
             
             return {
                 'success': False,
